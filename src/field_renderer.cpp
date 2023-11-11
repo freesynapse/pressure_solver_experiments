@@ -94,31 +94,31 @@ void FieldRenderer::updateData2D()
     float dx = (m_xlim[1] - m_xlim[0]) / (float)m_shape.x;
     float dy = (m_ylim[1] - m_ylim[0]) / (float)m_shape.y;
 
-    float x_2 = dx / 2.0f;
-    float y_2 = dy / 2.0f;
+    glm::vec2 mid = { dx * 0.5f, dy * 0.5f };
 
     //
     for (int y = 0; y < m_shape.y; y++)
     {
+        ndc_pos.x = m_xlim[0];
         for (int x = 0; x < m_shape.x; x++)
         {
             int idx = y * m_shape.x + x;
-            glm::vec2 cell_mid = ndc_pos + glm::vec2(x_2, y_2);
-            V[idx+0] = cell_mid;
-            V[idx+1] = cell_mid + m_data2D[idx];
-
+            glm::vec2 pos = ndc_pos + mid;
+            V[2*idx+0] = pos;
+            V[2*idx+1] = pos + m_data2D[idx];
             ndc_pos.x += dx;
+
         }
         ndc_pos.y += dy;
 
     }
 
     //
-    Ref<VertexBuffer> vbo = API::newVertexBuffer(GL_DYNAMIC_DRAW);
+    Ref<VertexBuffer> vbo = API::newVertexBuffer(GL_STATIC_DRAW);
     vbo->setBufferLayout({
         { VERTEX_ATTRIB_LOCATION_POSITION, ShaderDataType::Float2, "a_position" },
     });
-    vbo->setData(V, sizeof(glm::vec2) * 2 * m_cellCount);
+    vbo->setData(V, sizeof(V));
 
     //
     m_vao2D = API::newVertexArray(vbo);
@@ -134,6 +134,7 @@ void FieldRenderer::renderField2D()
         return;
     
     m_shader2D->enable();
+    glPointSize(30.0f);
     renderer.drawArrays(m_vao2D, 2 * m_cellCount, 0, false, GL_LINES);
 }
 

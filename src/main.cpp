@@ -31,7 +31,7 @@ public:
     std::shared_ptr<Field1D> m_scalarField = nullptr;
     std::shared_ptr<Field2D> m_vectorField = nullptr;
     std::shared_ptr<FieldRenderer> m_fieldRenderer = nullptr;
-    glm::ivec2 m_simShape = { 100, 100 };
+    glm::ivec2 m_simShape = { 40, 40 };
     void onResize(Event *_e);
 };
 
@@ -109,7 +109,7 @@ void layer::onUpdate(float _dt)
 
     if (m_fieldRenderer)
     {
-        // m_fieldRenderer->renderField1D();
+        m_fieldRenderer->renderField1D();
         m_fieldRenderer->renderField2D();
     }
 

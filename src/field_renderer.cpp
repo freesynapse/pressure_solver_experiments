@@ -12,9 +12,12 @@ FieldRendererBase::FieldRendererBase()
     m_shader1D_RGB = ShaderLibrary::load("../assets/shaders/field1d_RGB.glsl");
 
     m_shader2D = ShaderLibrary::load("../assets/shaders/field2d.glsl");
-
+    
     // create ndc quad
     // m_vpQuad = MeshCreator::createShapeViewportQuad();
+
+    // enable points sprites for vector field rendering
+    Renderer::get().enableGLenum(GL_POINT_SPRITE);
 
 }
 
@@ -24,6 +27,7 @@ FieldRenderer::FieldRenderer(const glm::ivec2 &_sim_shape, const glm::ivec2 &_vp
     assert(_sim_shape != glm::ivec2(0) && "shape not set");
 
     m_shape = _sim_shape;
+    m_vpSize = _vp;
     m_scalarTexture = std::make_shared<Texture2D>(_sim_shape.x, _sim_shape.y, ColorFormat::R32F);
     
     // calculate the ndc coordinates given that we have a square domain
@@ -87,8 +91,8 @@ void FieldRenderer::renderField1D()
 void FieldRenderer::updateData2D()
 {
     assert(m_data2D != nullptr && "no data in vector field ptr.");
-    
-    glm::vec2 V[m_cellCount * 2];
+
+    vector_field_vertex_t V[m_cellCount];
     glm::vec2 ndc_pos = { m_xlim[0], m_ylim[0] };
 
     float dx = (m_xlim[1] - m_xlim[0]) / (float)m_shape.x;
@@ -96,28 +100,60 @@ void FieldRenderer::updateData2D()
 
     glm::vec2 mid = { dx * 0.5f, dy * 0.5f };
 
+    // precompute magnitude of all vectors for setting lengths of quivers
+    float v_magnitudes[m_cellCount];
+    float max_magnitude = -FLT_MAX;
+    for (int y = 0; y < m_shape.y; y++)
+    {
+        for (int x = 0; x < m_shape.x; x++)
+        {
+            int idx = y * m_shape.x + x;
+            float m = glm::length(m_data2D[idx]);
+            max_magnitude = max(m, max_magnitude);
+            v_magnitudes[idx] = m;
+        }
+    }
+    float inv_max_mag = 1.0f / max_magnitude;
+
+
     //
+    int i = 0;
+    const float size = (float)m_vpSize.y / (float)m_shape.y;
     for (int y = 0; y < m_shape.y; y++)
     {
         ndc_pos.x = m_xlim[0];
         for (int x = 0; x < m_shape.x; x++)
         {
             int idx = y * m_shape.x + x;
-            glm::vec2 pos = ndc_pos + mid;
-            V[2*idx+0] = pos;
-            V[2*idx+1] = pos + m_data2D[idx];
+            glm::vec2 v = m_data2D[idx];
+            float v_mag = glm::length(m_data2D[idx]);
+            V[idx] =
+            {
+                .position = ndc_pos + mid,
+                .size = size,
+                .orientation = glm::acos(v.x / v_mag),
+                .linewidth = 0.08f,
+                // normalize magnitude [0..1] and send to shader
+                .magnitude = v_mag * inv_max_mag,
+            };
             ndc_pos.x += dx;
+            i++;
 
         }
         ndc_pos.y += dy;
 
     }
-
+    
     //
     Ref<VertexBuffer> vbo = API::newVertexBuffer(GL_STATIC_DRAW);
     vbo->setBufferLayout({
         { VERTEX_ATTRIB_LOCATION_POSITION, ShaderDataType::Float2, "a_position" },
+        { 1, ShaderDataType::Float, "a_size" },
+        { 2, ShaderDataType::Float, "a_orientation" },
+        { 3, ShaderDataType::Float, "a_linewidth" },
+        { 4, ShaderDataType::Float, "a_magnitude" },
     });
+
     vbo->setData(V, sizeof(V));
 
     //
@@ -126,16 +162,20 @@ void FieldRenderer::updateData2D()
 }
 
 //---------------------------------------------------------------------------------------
-void FieldRenderer::renderField2D()
+void FieldRenderer::renderField2D(float _dt)
 {
     static auto &renderer = Renderer::get();
+    static float rot = 0.0f;
 
     if (m_vao2D == nullptr)
         return;
-    
+
+    rot += 3.0f * _dt;
     m_shader2D->enable();
-    glPointSize(30.0f);
-    renderer.drawArrays(m_vao2D, 2 * m_cellCount, 0, false, GL_LINES);
+    m_shader2D->setUniform1f("u_antialias", 0.02f);
+    // m_shader2D->setUniform4fv("u_arrow_color", glm::vec4(1.0f));
+    m_shader2D->setUniform1f("u_rot", rot);
+    renderer.drawArrays(m_vao2D, m_cellCount, 0, false, GL_POINTS);
 }
 
 //---------------------------------------------------------------------------------------

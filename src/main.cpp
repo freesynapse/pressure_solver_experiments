@@ -31,7 +31,7 @@ public:
     std::shared_ptr<Field1D> m_scalarField = nullptr;
     std::shared_ptr<Field2D> m_vectorField = nullptr;
     std::shared_ptr<FieldRenderer> m_fieldRenderer = nullptr;
-    glm::ivec2 m_simShape = { 40, 40 };
+    glm::ivec2 m_simShape = { 32, 32 };
     void onResize(Event *_e);
 };
 
@@ -69,7 +69,9 @@ void layer::onAttach()
 
     //
     EventHandler::register_callback(EventType::VIEWPORT_RESIZE, SYN_EVENT_MEMBER_FNC(layer::onResize));
-    
+
+    SYN_TRACE("\n\n", m_simShape.x * m_simShape.y, "\n\n");
+
     m_scalarField = std::make_shared<Field1D>(m_simShape);
     m_vectorField = std::make_shared<Field2D>(m_simShape);
 
@@ -79,10 +81,18 @@ void layer::onAttach()
             f[y * m_simShape.x + x] = Random::rand_fC();
 
     glm::vec2 *v = m_vectorField->data();
+    float theta = 0.0f;
+    float theta_inc = 2*M_PI / (float)(m_simShape.x * m_simShape.y);
+    
     for (int y = 0; y < m_simShape.y; y++)
+    {
         for (int x = 0; x < m_simShape.x; x++)
-            v[y * m_simShape.x + x] = glm::vec2(0.04f, 0.04f);
-
+        {            
+            v[y * m_simShape.x + x] = glm::vec2(cosf(theta), sinf(theta)) * Random::rand_fC_r(0.2f, 1.0f);
+            theta += theta_inc;
+        }
+    
+    }
 
 
     // general settings
@@ -109,8 +119,8 @@ void layer::onUpdate(float _dt)
 
     if (m_fieldRenderer)
     {
-        m_fieldRenderer->renderField1D();
-        m_fieldRenderer->renderField2D();
+        // m_fieldRenderer->renderField1D();
+        m_fieldRenderer->renderField2D(_dt);
     }
 
 

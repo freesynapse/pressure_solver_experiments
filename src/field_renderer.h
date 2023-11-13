@@ -7,6 +7,16 @@ using namespace Syn;
 #include "field.h"
 
 
+struct vector_field_vertex_t
+{
+    glm::vec2 position;
+    float size;
+    float orientation;
+    float linewidth;
+    float magnitude;
+};
+
+//
 class FieldRendererBase
 {
 public:
@@ -34,7 +44,7 @@ public:
 
     //
     void renderField1D();
-    void renderField2D();
+    void renderField2D(float _dt);
     
     // Sets the scalar field data pointer
     __always_inline void setData1D(const std::shared_ptr<Field1D> &_field_1d) { setData1D(_field_1d.get()); }
@@ -60,7 +70,7 @@ public:
         updateData2D();
     }
     
-    //
+    // Data update functions
     __always_inline void updateData1D() { m_scalarTexture->setData(m_data1D, m_data1DSzBytes); }
     void updateData2D();
 
@@ -95,8 +105,8 @@ private:
     uint32_t m_data2DSzBytes        = 0;
     Ref<VertexArray> m_vao2D        = nullptr;
 
-
     glm::ivec2 m_shape              = { 0, 0 };
+    glm::ivec2 m_vpSize             = { 0, 0 };
     uint32_t m_cellCount            = 0;
     glm::vec2 m_xlim                = { 0, 0 };
     glm::vec2 m_ylim                = { 0, 0 };

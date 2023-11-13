@@ -70,16 +70,17 @@ void layer::onAttach()
     //
     EventHandler::register_callback(EventType::VIEWPORT_RESIZE, SYN_EVENT_MEMBER_FNC(layer::onResize));
 
-    SYN_TRACE("\n\n", m_simShape.x * m_simShape.y, "\n\n");
-
+    //
     m_scalarField = std::make_shared<Field1D>(m_simShape);
     m_vectorField = std::make_shared<Field2D>(m_simShape);
 
+    // 1D data
     float *f = m_scalarField->data();
     for (int y = 0; y < m_simShape.y; y++)
         for (int x = 0; x < m_simShape.x; x++)
             f[y * m_simShape.x + x] = Random::rand_fC();
 
+    // 2D data
     glm::vec2 *v = m_vectorField->data();
     float theta = 0.0f;
     float theta_inc = 2*M_PI / (float)(m_simShape.x * m_simShape.y);

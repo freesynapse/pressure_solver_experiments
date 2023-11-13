@@ -31,7 +31,7 @@ public:
     std::shared_ptr<Field1D> m_scalarField = nullptr;
     std::shared_ptr<Field2D> m_vectorField = nullptr;
     std::shared_ptr<FieldRenderer> m_fieldRenderer = nullptr;
-    glm::ivec2 m_simShape = { 32, 32 };
+    glm::ivec2 m_simShape = { 64, 64 };
     void onResize(Event *_e);
 };
 
@@ -74,27 +74,35 @@ void layer::onAttach()
     m_scalarField = std::make_shared<Field1D>(m_simShape);
     m_vectorField = std::make_shared<Field2D>(m_simShape);
 
-    // 1D data
+    // 1D data -- pressure for now
     float *f = m_scalarField->data();
     for (int y = 0; y < m_simShape.y; y++)
         for (int x = 0; x < m_simShape.x; x++)
-            f[y * m_simShape.x + x] = Random::rand_fC();
+            f[y * m_simShape.x + x] = -(cosf(y * 2*M_PI / (float)m_simShape.y) + \
+                                        cosf(x * 2*M_PI / (float)m_simShape.x));
 
     // 2D data
     glm::vec2 *v = m_vectorField->data();
-    float theta = 0.0f;
-    float theta_inc = 2*M_PI / (float)(m_simShape.x * m_simShape.y);
-    
+
+    glm::vec2 dv2 = { 1.0f / (float)m_simShape.x, 1.0f / (float)m_simShape.y };
+    int n = m_simShape.x;
+
     for (int y = 0; y < m_simShape.y; y++)
     {
         for (int x = 0; x < m_simShape.x; x++)
-        {            
-            v[y * m_simShape.x + x] = glm::vec2(cosf(theta), sinf(theta)) * Random::rand_fC_r(0.2f, 1.0f);
-            theta += theta_inc;
+        {         
+            int idx = y * m_simShape.x + x;
+            if (y == 0 || y == m_simShape.y - 1 || x == 0 || x == m_simShape.x - 1)
+                v[idx] = glm::vec2(0.0f);
+            else
+            {
+                v[idx].x = (f[idx+1] - f[idx-1]) / dv2.x;
+                v[idx].y = (f[idx+n] - f[idx-n]) / dv2.y;
+            }
+
         }
     
     }
-
 
     // general settings
 	Renderer::get().setClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -120,8 +128,8 @@ void layer::onUpdate(float _dt)
 
     if (m_fieldRenderer)
     {
-        // m_fieldRenderer->renderField1D();
-        m_fieldRenderer->renderField2D(_dt);
+        m_fieldRenderer->renderField1D();
+        m_fieldRenderer->renderField2D();
     }
 
 

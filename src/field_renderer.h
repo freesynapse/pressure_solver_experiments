@@ -44,7 +44,7 @@ public:
 
     //
     void renderField1D();
-    void renderField2D(float _dt);
+    void renderField2D();
     
     // Sets the scalar field data pointer
     __always_inline void setData1D(const std::shared_ptr<Field1D> &_field_1d) { setData1D(_field_1d.get()); }

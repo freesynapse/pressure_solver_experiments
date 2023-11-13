@@ -2,6 +2,7 @@
 #include "field_renderer.h"
 
 #include <synapse/API>
+#include <math.h>
 
 
 //
@@ -92,14 +93,6 @@ void FieldRenderer::updateData2D()
 {
     assert(m_data2D != nullptr && "no data in vector field ptr.");
 
-    vector_field_vertex_t V[m_cellCount];
-    glm::vec2 ndc_pos = { m_xlim[0], m_ylim[0] };
-
-    float dx = (m_xlim[1] - m_xlim[0]) / (float)m_shape.x;
-    float dy = (m_ylim[1] - m_ylim[0]) / (float)m_shape.y;
-
-    glm::vec2 mid = { dx * 0.5f, dy * 0.5f };
-
     // precompute magnitude of all vectors for setting lengths of quivers
     float v_magnitudes[m_cellCount];
     float max_magnitude = -FLT_MAX;
@@ -115,10 +108,19 @@ void FieldRenderer::updateData2D()
     }
     float inv_max_mag = 1.0f / max_magnitude;
 
-
     //
-    int i = 0;
+    vector_field_vertex_t V[m_cellCount];
+    glm::vec2 ndc_pos = { m_xlim[0], m_ylim[0] };
+
+    float dx = (m_xlim[1] - m_xlim[0]) / (float)m_shape.x;
+    float dy = (m_ylim[1] - m_ylim[0]) / (float)m_shape.y;
+
+    glm::vec2 mid = { dx * 0.5f, dy * 0.5f };
+
     const float size = (float)m_vpSize.y / (float)m_shape.y;
+
+    const float inv_2pi = 1.0f / (2.0f * M_PI);
+
     for (int y = 0; y < m_shape.y; y++)
     {
         ndc_pos.x = m_xlim[0];
@@ -126,18 +128,17 @@ void FieldRenderer::updateData2D()
         {
             int idx = y * m_shape.x + x;
             glm::vec2 v = m_data2D[idx];
-            float v_mag = glm::length(m_data2D[idx]);
+            float v_mag = v_magnitudes[idx];
             V[idx] =
             {
                 .position = ndc_pos + mid,
                 .size = size,
-                .orientation = glm::acos(v.x / v_mag),
-                .linewidth = 0.08f,
-                // normalize magnitude [0..1] and send to shader
-                .magnitude = v_mag * inv_max_mag,
+                // (float)(Math.Atan2(pixelpos.Y, pixelpos.X) / (2 * Math.PI));
+                .orientation = atan2f(v.y, v.x),
+                .linewidth = 0.1f,
+                .magnitude = v_mag * inv_max_mag, // normalize magnitude [0..1]
             };
             ndc_pos.x += dx;
-            i++;
 
         }
         ndc_pos.y += dy;
@@ -162,7 +163,7 @@ void FieldRenderer::updateData2D()
 }
 
 //---------------------------------------------------------------------------------------
-void FieldRenderer::renderField2D(float _dt)
+void FieldRenderer::renderField2D()
 {
     static auto &renderer = Renderer::get();
     static float rot = 0.0f;
@@ -170,11 +171,11 @@ void FieldRenderer::renderField2D(float _dt)
     if (m_vao2D == nullptr)
         return;
 
-    rot += 3.0f * _dt;
+    // rot += 3.0f * _dt;
     m_shader2D->enable();
     m_shader2D->setUniform1f("u_antialias", 0.02f);
     // m_shader2D->setUniform4fv("u_arrow_color", glm::vec4(1.0f));
-    m_shader2D->setUniform1f("u_rot", rot);
+    // m_shader2D->setUniform1f("u_rot", rot);
     renderer.drawArrays(m_vao2D, m_cellCount, 0, false, GL_POINTS);
 }
 

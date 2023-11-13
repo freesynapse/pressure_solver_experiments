@@ -14,6 +14,7 @@ out float v_size;
 out vec2 v_rotation;
 out float v_linewidth;
 out float v_magnitude;
+out float v_skip_vertex;
 
 uniform float u_antialias;
 uniform float u_rot;
@@ -26,7 +27,10 @@ void main()
     // v_rotation = vec2(cos(a_orientation), sin(a_orientation));
     v_rotation = vec2(cos(a_orientation + u_rot), sin(a_orientation + u_rot));
     v_linewidth = a_linewidth;
+    v_magnitude = a_magnitude;
 
+    v_skip_vertex = (a_magnitude == 0.0 ? 1.0 : 0.0);
+    
     gl_Position = vec4(a_position, 0.0, 1.0);
     gl_PointSize = M_SQRT2 * a_size + 2.0 * (a_linewidth + 1.5 * u_antialias);
 
@@ -46,9 +50,44 @@ in float v_size;
 in vec2 v_rotation;
 in float v_linewidth;
 in float v_magnitude;
+in float v_skip_vertex;
 
 uniform float u_antialias;
 uniform vec4 u_arrow_color = vec4(0.35, 0.95, 0.51, 1.0);
+
+//
+float colormap_red(float x)
+{
+    if (x < 0.7)
+        return 4.0 * x - 1.5;
+    else
+        return -4.0 * x + 4.5;
+}
+
+//
+float colormap_green(float x)
+{
+    if (x < 0.5)
+        return 4.0 * x - 0.5;
+    else
+        return -4.0 * x + 3.5;
+}
+
+float colormap_blue(float x)
+{
+    if (x < 0.3)
+       return 4.0 * x + 0.5;
+    else
+       return -4.0 * x + 2.5;
+}
+
+vec4 colormap(float x)
+{
+    float r = clamp(colormap_red(x), 0.0, 1.0);
+    float g = clamp(colormap_green(x), 0.0, 1.0);
+    float b = clamp(colormap_blue(x), 0.0, 1.0);
+    return vec4(r, g, b, 1.0);
+}
 
 // Fill function for arrows
 vec4 filled(float distance,     // Signed distance to line
@@ -115,6 +154,9 @@ float arrow_triangle(vec2 texcoord, float body, float head, float height,
 //
 void main()
 {
+    if (v_skip_vertex == 1.0)
+        discard;
+
     vec2 p = gl_PointCoord.xy - vec2(0.5);
 
     p = vec2(v_rotation.x*p.x - v_rotation.y*p.y,
@@ -123,7 +165,8 @@ void main()
     // float d = line(p, vec2(0.0), vec2(1.0), 0.02);
     float d = arrow_triangle(p, 0.6, 0.1, 0.6, v_linewidth, u_antialias);
 
-    vec4 color = vec4(v_magnitude, u_arrow_color.gba);
+    // vec4 color = vec4(v_magnitude, u_arrow_color.gba);
+    vec4 color = colormap(v_magnitude);
     out_color = filled(d, v_linewidth, u_antialias, color);
 }
 

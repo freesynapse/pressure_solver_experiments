@@ -31,7 +31,7 @@ public:
     std::shared_ptr<Field1D> m_scalarField = nullptr;
     std::shared_ptr<Field2D> m_vectorField = nullptr;
     std::shared_ptr<FieldRenderer> m_fieldRenderer = nullptr;
-    glm::ivec2 m_simShape = { 64, 64 };
+    glm::ivec2 m_simShape = { 40, 40 };
     void onResize(Event *_e);
 };
 
@@ -74,30 +74,70 @@ void layer::onAttach()
     m_scalarField = std::make_shared<Field1D>(m_simShape);
     m_vectorField = std::make_shared<Field2D>(m_simShape);
 
-    // 1D data -- pressure for now
+    // 1D data -- something to point to...
     float *f = m_scalarField->data();
     for (int y = 0; y < m_simShape.y; y++)
+    {
         for (int x = 0; x < m_simShape.x; x++)
-            f[y * m_simShape.x + x] = -(cosf(y * 2*M_PI / (float)m_simShape.y) + \
-                                        cosf(x * 2*M_PI / (float)m_simShape.x));
+        {
+            //f[y * m_simShape.x + x] = -(cosf(y * 2*M_PI / (float)m_simShape.y) + \
+            //                            cosf(x * 2*M_PI / (float)m_simShape.x));
+            float f_ = -(std::pow(y-(m_simShape.y*0.5f), 2) + std::pow(x-(m_simShape.x*0.5f), 2));
+            f[y * m_simShape.x + x] = f_;
+        }
+    }
 
     // 2D data
     glm::vec2 *v = m_vectorField->data();
 
-    glm::vec2 dv2 = { 1.0f / (float)m_simShape.x, 1.0f / (float)m_simShape.y };
+    glm::vec2 dv2 = { 2.0f / (float)m_simShape.x, 2.0f / (float)m_simShape.y };
     int n = m_simShape.x;
 
+    // TODO : replace with separate loops for borders and interior
     for (int y = 0; y < m_simShape.y; y++)
     {
         for (int x = 0; x < m_simShape.x; x++)
         {         
             int idx = y * m_simShape.x + x;
-            if (y == 0 || y == m_simShape.y - 1 || x == 0 || x == m_simShape.x - 1)
-                v[idx] = glm::vec2(0.0f);
-            else
+            
+            // borders
+            //
+            // top
+            if (y == 0 && x > 0 && x < m_simShape.x - 1)
+            {
+                v[idx].x = (f[idx+1] - f[idx-1]) / dv2.x;
+                v[idx].y = (f[idx+n] - f[idx]) / (0.5f * dv2.y);
+            }
+            // bottom
+            else if (y == m_simShape.y - 1 && x > 0 && x < m_simShape.x - 1)
+            {
+                v[idx].x = (f[idx+1] - f[idx-1]) / dv2.x;
+                v[idx].y = (f[idx] - f[idx-n]) / (0.5f * dv2.y);
+            }
+            // left
+            else if (x == 0 && y > 0 && y < m_simShape.y - 1)
+            {
+                v[idx].x = (f[idx+1] - f[idx]) / (0.5f * dv2.x);
+                v[idx].y = (f[idx+n] - f[idx-n]) / dv2.y;
+            }
+            // right
+            else if (x == m_simShape.x - 1 && y > 0 && y < m_simShape.y - 1)
+            {
+                v[idx].x = (f[idx] - f[idx-1]) / (0.5f * dv2.x);
+                v[idx].y = (f[idx+n] - f[idx-n]) / dv2.y;
+            }
+
+            // interior
+            //
+            else if (x > 0 && x < m_simShape.x - 1 && y > 0 && y < m_simShape.y - 1)
             {
                 v[idx].x = (f[idx+1] - f[idx-1]) / dv2.x;
                 v[idx].y = (f[idx+n] - f[idx-n]) / dv2.y;
+            }
+
+            else
+            {
+                v[idx] = glm::vec2(0.0f);
             }
 
         }
@@ -128,7 +168,7 @@ void layer::onUpdate(float _dt)
 
     if (m_fieldRenderer)
     {
-        m_fieldRenderer->renderField1D();
+        // m_fieldRenderer->renderField1D();
         m_fieldRenderer->renderField2D();
     }
 

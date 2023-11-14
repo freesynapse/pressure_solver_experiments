@@ -37,7 +37,7 @@ workspace "syn_app"
 
 
 -----------------------------------------------------------------------------------------
-project "field2d_class"
+project "pressure_solver"
 
     kind "ConsoleApp"
 
